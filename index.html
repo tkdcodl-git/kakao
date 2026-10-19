@@ -154,7 +154,11 @@ body.nonav .nav-wrap{display:none}
 .ln-total{text-align:center;padding:54px 0 0}
 .ln-total .c{font-size:13.5px}
 .ln-total .v{font-size:28px;font-weight:800;margin-top:15px;letter-spacing:-.04em}
-.chart-box{margin:6px 0 0;padding:0}
+.chart-box{margin:6px 0 0;padding:0;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;cursor:pointer}
+.ln-line.pre,.ln-line.draw{stroke-dasharray:1}
+.ln-line.pre{stroke-dashoffset:1}
+.ln-line.draw{stroke-dashoffset:0;transition:stroke-dashoffset .85s cubic-bezier(.45,.05,.3,1)}
+@media (prefers-reduced-motion:reduce){.ln-line.pre{stroke-dashoffset:0}.ln-line.draw{transition:none}}
 .chart-box svg{width:100%;height:auto;overflow:visible}
 .chart-note{text-align:center;font-size:10px;color:#8f9399;margin-top:8px}
 .ln-count{margin-top:40px;background:#f4f4f5;padding:10px 24px;font-size:11px;color:#6f7378}
@@ -381,7 +385,7 @@ function swap(id){
   document.body.classList.toggle('nonav',id==='credit'||id==='loan');
   document.body.classList.toggle('gray',id==='credit');
   window.scrollTo(0,0);
-  if(id==='loan')renderLoan();
+  if(id==='loan'){renderLoan(true);clearTimeout(lnFall);lnFall=setTimeout(playLoanChart,1400)}
 }
 let busy=false;
 function go(id){
@@ -393,6 +397,7 @@ function go(id){
   swap(id);
   setTimeout(()=>{
     sk.classList.remove('show');
+    if(id==='loan')setTimeout(playLoanChart,180);
     const sc=document.getElementById(id);
     sc.classList.add('enter');
     setTimeout(()=>{sc.classList.remove('enter');busy=false},620);
@@ -445,28 +450,60 @@ function loadLoan(){
 const won=n=>Math.round(Number(n)||0).toLocaleString('ko-KR')+'원';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-function renderLoan(){
+let lnSel=5,lnPts=[],lnD=[],lnVals=[],lnFall=0;
+const LN_W=393,LN_B=133;
+function playLoanChart(){
+  clearTimeout(lnFall);
+  const el=document.querySelector('#ln-chart .ln-line.pre');
+  if(!el)return;
+  el.getBoundingClientRect();            // 시작 상태를 확정한 뒤 전환 시작
+  el.setAttribute('class','ln-line draw');
+  setTimeout(()=>{el.setAttribute('class','ln-line')},1000);
+}
+function drawSel(){
+  const vl=document.getElementById('ln-vl'),dt=document.getElementById('ln-dots'),lb=document.getElementById('ln-labels');
+  if(!vl||!dt||!lb)return;
+  const W=LN_W,B=LN_B,sel=lnSel,lp=lnPts[sel];
+  vl.innerHTML='<line x1="'+lp.x+'" x2="'+lp.x+'" y1="'+(lp.y-14)+'" y2="'+B+'" stroke="#222" stroke-width="1"/>';
+  let s='';
+  lnPts.forEach((p,i)=>{s+= i!==sel?'<circle cx="'+p.x+'" cy="'+p.y+'" r="4.7" fill="#2b2d31"/>':'<circle cx="'+p.x+'" cy="'+p.y+'" r="5.5" fill="#fff" stroke="#2b2d31" stroke-width="2.4"/>'});
+  const txt=won(lnVals[sel]),bw=txt.length*8.2,bx=Math.max(2,Math.min(W-14-bw,lp.x-bw/2));
+  s+='<rect x="'+bx+'" y="'+(lp.y-35)+'" width="'+bw+'" height="21" rx="10.5" fill="#2b2d31"/><text x="'+(bx+bw/2)+'" y="'+(lp.y-20.5)+'" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">'+txt+'</text>';
+  dt.innerHTML=s;
+  lb.innerHTML=lnD.map((x,i)=>'<text x="'+lnPts[i].x+'" y="'+(B+19)+'" font-size="10" font-weight="'+(i===sel?800:400)+'" fill="'+(i===sel?'#1b1d21':'#8f9399')+'" text-anchor="middle">'+(i===5?x.m+'월':x.m)+'</text>').join('');
+}
+(function(){
+  const box=document.getElementById('ln-chart');let down=false;
+  function pick(e){
+    const r=box.getBoundingClientRect();if(!r.width||!lnPts.length)return;
+    const x=(e.clientX-r.left)/r.width*LN_W;let k=0,best=1e9;
+    lnPts.forEach((p,i)=>{const dd=Math.abs(p.x-x);if(dd<best){best=dd;k=i}});
+    if(k!==lnSel){lnSel=k;drawSel()}
+  }
+  box.addEventListener('pointerdown',e=>{down=true;try{box.setPointerCapture(e.pointerId)}catch(_){}pick(e)});
+  box.addEventListener('pointermove',e=>{if(down)pick(e)});
+  ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>box.addEventListener(ev,()=>{down=false}));
+})();
+
+function renderLoan(anim){
   const d=loadLoan(),vals=d.map(x=>x.amt),last=vals[5],loans=loadLoans();
   document.getElementById('ln-total').textContent=won(last);
 
   // chart (1:1 with a 393pt wide screen)
-  const W=393,H=160,L=49,R=346,B=133;
+  const W=LN_W,H=160,L=49,R=346,B=LN_B;
   let min=Math.min(...vals),max=Math.max(...vals);
   if(max===min){max+=1;min-=1}
   const pts=vals.map((v,i)=>({x:65+i*53,y:(B-9)-((v-min)/(max-min))*74}));
   const path=pts.map((p,i)=>(i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
-  const lp=pts[5];
+  lnSel=5;lnPts=pts;lnD=d;lnVals=vals;
   let s='<svg viewBox="0 0 '+W+' '+H+'">';
   [B-93,B-62,B-31].forEach(y=>s+='<line x1="'+L+'" x2="'+R+'" y1="'+y+'" y2="'+y+'" stroke="#efeff0" stroke-width="1"/>');
   s+='<line x1="'+L+'" x2="'+R+'" y1="'+B+'" y2="'+B+'" stroke="#dcdcde" stroke-width="1"/>';
-  s+='<line x1="'+lp.x+'" x2="'+lp.x+'" y1="'+(lp.y-14)+'" y2="'+B+'" stroke="#222" stroke-width="1"/>';
-  s+='<path d="'+path+'" fill="none" stroke="#6d6cc2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
-  pts.forEach((p,i)=>{s+= i<5?'<circle cx="'+p.x+'" cy="'+p.y+'" r="4.7" fill="#2b2d31"/>':'<circle cx="'+p.x+'" cy="'+p.y+'" r="5.5" fill="#fff" stroke="#2b2d31" stroke-width="2.4"/>'});
-  const txt=won(last),bw=txt.length*8.2,bx=Math.max(2,Math.min(W-14-bw,lp.x-bw/2));
-  s+='<rect x="'+bx+'" y="'+(lp.y-35)+'" width="'+bw+'" height="21" rx="10.5" fill="#2b2d31"/><text x="'+(bx+bw/2)+'" y="'+(lp.y-20.5)+'" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">'+txt+'</text>';
-  d.forEach((x,i)=>{s+='<text x="'+pts[i].x+'" y="'+(B+19)+'" font-size="10" font-weight="'+(i===5?800:400)+'" fill="'+(i===5?'#1b1d21':'#8f9399')+'" text-anchor="middle">'+(i===5?x.m+'월':x.m)+'</text>'});
-  s+='</svg>';
+  s+='<g id="ln-vl"></g>';
+  s+='<path class="ln-line'+(anim?' pre':'')+'" pathLength="1" d="'+path+'" fill="none" stroke="#6d6cc2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+  s+='<g id="ln-dots"></g><g id="ln-labels"></g></svg>';
   document.getElementById('ln-chart').innerHTML=s;
+  drawSel();
 
   // list
   const styles=['background:#2349e8;color:#fff','background:#dcebff;color:#2b7de0','','','',''];
