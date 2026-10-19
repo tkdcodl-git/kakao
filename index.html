@@ -79,7 +79,7 @@ body.nonav .nav-wrap{display:none}
 .nav-ai svg{width:28px;height:28px}
 
 /* ---------- MENU ---------- */
-.menu-head{display:flex;align-items:center;padding:22px 16px 0;gap:14px}
+.menu-head{position:sticky;top:0;z-index:20;background:#fff;display:flex;align-items:center;height:64px;padding:0 14px 0 16px;gap:14px}
 .menu-head h1{margin:0;font-size:20px;font-weight:800;flex:1}
 .menu-head h1 span{color:#b3b5ba;font-weight:400;margin-left:4px}
 .menu-head .ib{width:26px;height:26px;display:grid;place-items:center}
@@ -103,7 +103,7 @@ body.nonav .nav-wrap{display:none}
 .pop .it .pi.g{background:#f3c24b;border-radius:50% 50% 12px 12px}
 .pop .it .pi.m{background:#7fc18d}
 .pop hr{border:0;border-top:1px solid #ececee;margin:10px 0}
-.tab-row{display:flex;gap:16px;overflow-x:auto;white-space:nowrap;padding:30px 22px 6px;scrollbar-width:none}
+.tab-row{position:sticky;top:64px;z-index:19;background:#fff;display:flex;gap:16px;overflow-x:auto;white-space:nowrap;margin-top:20px;padding:12px 22px 10px;scrollbar-width:none}
 .tab-row::-webkit-scrollbar{display:none}
 .tab-row button{font-size:16.5px;font-weight:800;color:#a3a6ac;flex:none}
 .tab-row button.on{color:var(--ink)}
@@ -187,6 +187,29 @@ body.nonav .nav-wrap{display:none}
 .sa .p{background:var(--brand)}.sa .s{background:#f0f0f2}
 .toast{position:fixed;bottom:130px;left:50%;transform:translateX(-50%);background:#26292e;color:#fff;padding:11px 18px;border-radius:22px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:80;white-space:nowrap}
 .toast.show{opacity:1}
+
+/* ---------- transitions ---------- */
+.skel{position:fixed;inset:0;z-index:25;background:#fff;display:none;overflow:hidden}
+.skel.show{display:block;animation:fadein .12s ease-out}
+.skel .sk{position:relative;overflow:hidden;background:#f2f2f4;border-radius:14px}
+.skel .sk:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,#ffffffb0,transparent);transform:translateX(-100%);animation:shim 1s infinite}
+.skel .row{display:flex;gap:12px;justify-content:space-between;padding:0 24px}
+.skel .row .sk{width:44px;height:44px;border-radius:50%}
+.spinner{position:absolute;left:50%;top:46%;width:38px;height:38px;margin:-19px 0 0 -19px;border-radius:50%;border:4px solid #dfe3e6;border-top-color:var(--brand);animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes shim{to{transform:translateX(100%)}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.screen.enter>*{animation:rise .4s cubic-bezier(.2,.7,.3,1) both}
+.screen.enter>*:nth-child(2){animation-delay:.04s}
+.screen.enter>*:nth-child(3){animation-delay:.08s}
+.screen.enter>*:nth-child(4){animation-delay:.12s}
+.screen.enter>*:nth-child(5){animation-delay:.16s}
+.screen.enter>*:nth-child(n+6){animation-delay:.2s}
+/* menu sections */
+#msecs{padding-bottom:60vh}
+.msec{scroll-margin-top:130px}
+.mh{margin:0;padding:30px 22px 2px;font-size:20px;font-weight:800}
 </style>
 </head>
 <body class="on-home">
@@ -253,13 +276,17 @@ body.nonav .nav-wrap{display:none}
     <button class="it" onclick="toast('예시 화면입니다')"><svg class="pic" viewBox="0 0 34 34"><rect x="5" y="9" width="24" height="15" rx="2" fill="#7fc18d" transform="rotate(-18 17 17)"/><circle cx="17" cy="17" r="4" fill="#e9f6ec" transform="rotate(-18 17 17)"/><path d="M26 22c3 0 5 2 6 4-2 0-4-.500-6-2z" fill="#cfe7f4"/></svg>외화통장 송금기본수수료 0원</button>
   </div>
 
-  <div class="tab-row"><button class="on">서비스</button><button class="dotred">AI</button><button class="dotred">통장</button><button class="dotred">저축</button><button class="dotred">카드</button><button>대출</button><button>외환</button><button>사업자</button></div>
-
-  <div class="sect-label">이체·출금</div>
-  <button class="m-item" onclick="toast('이체 화면은 예시입니다')">이체</button>
-  <button class="m-item" onclick="toast('예시 화면입니다')">AI 이체</button>
-  <button class="m-item" onclick="toast('예시 화면입니다')">다건이체</button>
-  <button class="m-item" onclick="toast('예시 화면입니다')">자동이체</button>
+  <div class="tab-row" id="tabrow"><button class="on" data-t="0" onclick="tabTo(0)">서비스</button><button class=" dotred" data-t="1" onclick="tabTo(1)">AI</button><button class=" dotred" data-t="2" onclick="tabTo(2)">통장</button><button class=" dotred" data-t="3" onclick="tabTo(3)">저축</button><button class=" dotred" data-t="4" onclick="tabTo(4)">카드</button><button class="" data-t="5" onclick="tabTo(5)">대출</button><button class="" data-t="6" onclick="tabTo(6)">외환</button><button class="" data-t="7" onclick="tabTo(7)">사업자</button></div>
+  <div id="msecs">
+    <div class="msec" id="ms0"><div class="sect-label">이체·출금</div><button class="m-item" onclick="toast('예시 화면입니다')">이체</button><button class="m-item" onclick="toast('예시 화면입니다')">AI 이체</button><button class="m-item" onclick="toast('예시 화면입니다')">다건이체</button><button class="m-item" onclick="toast('예시 화면입니다')">자동이체</button><div class="sect-label">정산·납부</div><button class="m-item" onclick="toast('예시 화면입니다')">더치페이</button><button class="m-item" onclick="toast('예시 화면입니다')">공과금 납부</button><button class="m-item" onclick="toast('예시 화면입니다')">아파트관리비 조회/납부</button></div>
+    <div class="msec" id="ms1"><h3 class="mh">AI</h3><button class="m-item" onclick="toast('예시 화면입니다')">AI 검색</button><button class="m-item" onclick="toast('예시 화면입니다')">AI 모임통장</button><button class="m-item" onclick="toast('예시 화면입니다')">AI 금융 계산기</button><button class="m-item" onclick="toast('예시 화면입니다')">AI 목표저축</button></div>
+    <div class="msec" id="ms2"><h3 class="mh">통장</h3><button class="m-item" onclick="toast('예시 화면입니다')">입출금통장</button><button class="m-item" onclick="toast('예시 화면입니다')">모임통장</button><button class="m-item" onclick="toast('예시 화면입니다')">외화통장</button><button class="m-item" onclick="toast('예시 화면입니다')">세이프박스</button></div>
+    <div class="msec" id="ms3"><h3 class="mh">저축</h3><button class="m-item" onclick="toast('예시 화면입니다')">정기예금</button><button class="m-item" onclick="toast('예시 화면입니다')">자유적금</button><button class="m-item" onclick="toast('예시 화면입니다')">정기적금</button><button class="m-item" onclick="toast('예시 화면입니다')">파킹통장</button></div>
+    <div class="msec" id="ms4"><h3 class="mh">카드</h3><button class="m-item" onclick="toast('예시 화면입니다')">프렌즈 체크카드</button><button class="m-item" onclick="toast('예시 화면입니다')">mini카드</button><button class="m-item" onclick="toast('예시 화면입니다')">내 카드 내역</button><button class="m-item" onclick="toast('예시 화면입니다')">카드 청구금액 알림</button></div>
+    <div class="msec" id="ms5"><h3 class="mh">대출</h3><button class="m-item" onclick="toast('예시 화면입니다')">신용대출 비교하기</button><button class="m-item" onclick="toast('예시 화면입니다')">주택담보대출 비교하기</button><button class="m-item" onclick="toast('예시 화면입니다')">중고차·신차 할부 비교하기</button><button class="m-item" onclick="go('credit')">내 신용정보</button></div>
+    <div class="msec" id="ms6"><h3 class="mh">외환</h3><button class="m-item" onclick="toast('예시 화면입니다')">외화 환전</button><button class="m-item" onclick="toast('예시 화면입니다')">해외 송금</button><button class="m-item" onclick="toast('예시 화면입니다')">외화통장 송금수수료</button></div>
+    <div class="msec" id="ms7"><h3 class="mh">사업자</h3><button class="m-item" onclick="toast('예시 화면입니다')">사업자 통장</button><button class="m-item" onclick="toast('예시 화면입니다')">사업자 대출</button><button class="m-item" onclick="toast('예시 화면입니다')">사업자 카드</button></div>
+  </div>
 </section>
 
 <!-- ================= CREDIT ================= -->
@@ -332,11 +359,21 @@ body.nonav .nav-wrap{display:none}
   <div id="sheet-inputs"></div>
   <div class="sa"><button class="s" onclick="resetLoan()">예시값 복원</button><button class="p" onclick="saveLoan()">저장하기</button></div>
 </div>
+<div class="skel" id="skel">
+  <div style="height:96px"></div>
+  <div class="row"><span class="sk"></span><span class="sk"></span><span class="sk"></span><span class="sk"></span><span class="sk"></span></div>
+  <div class="sk" style="margin:26px 16px 0;height:58px;border-radius:29px"></div>
+  <div class="sk" style="margin:12px 16px 0;height:230px;border-radius:26px"></div>
+  <div class="sk" style="margin:22px 22px 0;height:16px;width:46%"></div>
+  <div class="sk" style="margin:14px 22px 0;height:16px;width:70%"></div>
+  <div class="sk" style="margin:14px 22px 0;height:16px;width:58%"></div>
+  <div class="spinner"></div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
 /* ---------- navigation ---------- */
-function go(id){
+function swap(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===id));
   document.querySelectorAll('.nav-item[data-p]').forEach(b=>b.classList.toggle('active',b.dataset.p===id));
   document.body.classList.toggle('on-home',id==='home');
@@ -345,6 +382,35 @@ function go(id){
   window.scrollTo(0,0);
   if(id==='loan')renderLoan();
 }
+let busy=false;
+function go(id){
+  const cur=document.querySelector('.screen.active');
+  if(busy||(cur&&cur.id===id))return;
+  busy=true;
+  const sk=document.getElementById('skel');
+  sk.classList.add('show');
+  swap(id);
+  setTimeout(()=>{
+    sk.classList.remove('show');
+    const sc=document.getElementById(id);
+    sc.classList.add('enter');
+    setTimeout(()=>{sc.classList.remove('enter');busy=false},620);
+  },500);
+}
+/* menu tabs: smooth scroll to the section, highlight follows scroll */
+function tabTo(i){
+  document.querySelectorAll('#tabrow button').forEach(b=>b.classList.toggle('on',+b.dataset.t===i));
+  const y=document.getElementById('ms'+i).getBoundingClientRect().top+window.scrollY-128;
+  window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
+}
+window.addEventListener('scroll',()=>{
+  if(!document.getElementById('menu').classList.contains('active'))return;
+  let k=0;
+  for(let i=0;i<8;i++){const e=document.getElementById('ms'+i);if(e&&e.getBoundingClientRect().top<=150)k=i}
+  const bs=document.querySelectorAll('#tabrow button');
+  bs.forEach(b=>b.classList.toggle('on',+b.dataset.t===k));
+  const on=bs[k];if(on)on.parentNode.scrollTo({left:on.offsetLeft-22,behavior:'smooth'});
+},{passive:true});
 let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),1700)}
 
 /* ---------- home: tap to show/hide amounts ---------- */
@@ -435,7 +501,7 @@ function resetLoan(){
 }
 
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))}
-go('home');
+swap('home');
 </script>
 </body>
 </html>
