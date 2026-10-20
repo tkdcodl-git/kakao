@@ -117,24 +117,28 @@ body.nonav .nav-wrap{display:none}
 /* ---------- CREDIT - with video effects ---------- */
 .credit-screen{
   position:fixed;inset:0;z-index:60;background:#f2f2f5;
-  transform:translateY(100%);opacity:0;
-  transition:transform .48s cubic-bezier(.32,.72,0,1), opacity .32s ease;
   overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
-.credit-screen.active{
-  transform:translateY(0);opacity:1;
-}
-.credit-screen.closing{
-  transform:translateY(100%);opacity:0;
-}
+.credit-screen.active{animation:crUp .42s cubic-bezier(.32,.72,0,1) both}
+.credit-screen.active.settled{animation:none}
+.credit-screen.closing{display:block;animation:crDown .38s cubic-bezier(.4,0,.6,1) both}
+@keyframes crUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes crDown{from{transform:translateY(0)}to{transform:translateY(100%)}}
+/* 홈 위에 깔리는 딤 + 스피너 (영상 0~0.7s) */
+#cr-dim{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .18s ease}
+#cr-dim.show{opacity:1;pointer-events:auto}
+#cr-dim .cr-spin{position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:3.5px solid rgba(255,255,255,.45);border-top-color:#fff;animation:spin .7s linear infinite}
+/* 숫자 롤링(카운트업 중 흐림) */
+#credit-scores .v.rolling{filter:blur(1.6px);color:#9a9aa2}
+#credit-scores .v{transition:filter .25s ease,color .3s ease}
+.cr-real .ci{opacity:0}
+.cr-real.in .ci{animation:ciIn .45s ease .12s both}
+@keyframes ciIn{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
 .credit-screen .cr-head{
   position:sticky;top:0;z-index:2;background:#f2f2f5;
 }
-#credit-scores.loading .v{color:#d9d9de;transition:color .3s}
-#credit-scores .v{
-  transition:color .3s;
-  font-variant-numeric:tabular-nums;
-}
+#credit-scores.loading .v{color:#d9d9de}
+#credit-scores .v{font-variant-numeric:tabular-nums}
 #credit-scores .bar i{
   transition:width .9s cubic-bezier(.22,.61,.36,1);
 }
@@ -650,6 +654,7 @@ body.nonav .nav-wrap{display:none}
   <div class="sk" style="margin:14px 22px 0;height:16px;width:58%"></div>
   <div class="spinner"></div>
 </div>
+<div id="cr-dim"><div class="cr-spin"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -930,8 +935,13 @@ swap('home');
 /* ---------- CREDIT EFFECTS from video - SINGLE CLEAN ---------- */
 var creditAnimTimer=0;
 
+var crBusy=false, crTimers=[];
+function crLater(fn,ms){crTimers.push(setTimeout(fn,ms))}
+
 function openCredit(){
+  if(crBusy)return;
   const el=document.getElementById('credit');
+  const dim=document.getElementById('cr-dim');
   const scores=document.getElementById('credit-scores');
   const kcbEl=document.getElementById('score-kcb');
   const niceEl=document.getElementById('score-nice');
@@ -940,77 +950,84 @@ function openCredit(){
   const skel=document.getElementById('credit-skeleton');
   const real=document.getElementById('credit-real');
   const title=document.getElementById('loan-cond-title');
-  
-  if(!el||!scores||!kcbEl||!niceEl||!barKcb||!barNice||!skel||!real) {
-    console.warn('credit elements missing');
-    return;
-  }
-  
-  // 다른 스크린 숨기고 크레딧만 표시
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  el.classList.add('active');
-  el.classList.remove('closing');
-  document.body.classList.add('nonav','gray');
-  document.body.classList.remove('on-home');
-  
-  // 초기화 - 로딩 상태 (영상 2.0초 지점)
+  if(!el||!dim||!scores||!kcbEl||!niceEl||!barKcb||!barNice||!skel||!real){console.warn('credit elements missing');return;}
+  crBusy=true;
+  crTimers.forEach(clearTimeout); crTimers=[];
+
+  // 0) 초기 상태 (로딩)
+  el.classList.remove('active','settled','closing');
   scores.classList.add('loading');
   kcbEl.textContent='0'; niceEl.textContent='0';
+  kcbEl.classList.remove('rolling'); niceEl.classList.remove('rolling');
   barKcb.style.width='0%'; barNice.style.width='0%';
-  barKcb.style.background='#e0e0e3'; barNice.style.background='#e0e0e3';
-  skel.style.display='block'; real.style.display='none';
+  skel.style.display='block'; real.style.display='none'; real.classList.remove('in');
   if(title) title.textContent='로딩중...';
-  
   el.scrollTop=0;
-  window.scrollTo(0,0);
-  
-  clearTimeout(creditAnimTimer);
-  // 650ms 후 카운트업 (영상 2.5s -> 3.6s)
-  creditAnimTimer=setTimeout(()=>{
+
+  // 1) 현재 화면 위에 딤 + 스피너 (0.7s)
+  dim.classList.add('show');
+
+  // 2) 아래에서 슬라이드 업
+  crLater(()=>{
+    document.body.classList.add('nonav','gray');
+    document.body.classList.remove('on-home');
+    el.classList.add('active');           // keyframe 애니메이션 시작
+    dim.classList.remove('show');
+    crLater(()=>{                          // 슬라이드 끝나면 뒤 화면 정리
+      document.querySelectorAll('.screen').forEach(s=>{ if(s!==el) s.classList.remove('active'); });
+      el.classList.add('settled');
+      window.scrollTo(0,0);
+    },440);
+  },700);
+
+  // 3) 0점 + 스켈레톤 유지 후 카운트업 (슬라이드 시작 + 약 1.3s)
+  crLater(()=>{
     scores.classList.remove('loading');
-    barKcb.style.background=''; barNice.style.background='';
-    
-    animateScore(kcbEl, 0, 918, 900);
-    animateScore(niceEl, 0, 872, 900);
-    
-    setTimeout(()=>{barKcb.style.width='91.8%'; barNice.style.width='87.2%';}, 80);
-    
-    setTimeout(()=>{
+    kcbEl.classList.add('rolling'); niceEl.classList.add('rolling');
+    animateScore(kcbEl,0,918,650);
+    animateScore(niceEl,0,872,650);
+    barKcb.style.width='91.8%'; barNice.style.width='87.2%';
+    // 4) 실제 콘텐츠 교체
+    crLater(()=>{
       skel.style.display='none';
       real.style.display='block';
+      real.getBoundingClientRect();
+      real.classList.add('in');
       if(title) title.textContent='918점일 때 대출 조건';
-      kcbEl.classList.add('score-pop');
-      niceEl.classList.add('score-pop');
-      setTimeout(()=>{kcbEl.classList.remove('score-pop'); niceEl.classList.remove('score-pop');}, 500);
-    }, 750);
-  }, 650);
+    },300);
+    crLater(()=>{
+      kcbEl.classList.remove('rolling'); niceEl.classList.remove('rolling');
+      crBusy=false;
+    },700);
+  },2000);
 }
 
+// 3자리 0 패딩 + 롤링 (영상: 012, 025 …)
 function animateScore(el, from, to, duration){
   const start=performance.now();
   const diff=to-from;
   function step(now){
-    const elapsed=now-start;
-    const progress=Math.min(elapsed/duration,1);
+    const progress=Math.min((now-start)/duration,1);
     const ease=1-Math.pow(1-progress,3);
-    const current=Math.round(from + diff*ease);
-    el.textContent=current;
+    const cur=Math.round(from+diff*ease);
+    el.textContent=progress<1?String(cur).padStart(3,'0'):String(to);
     if(progress<1) requestAnimationFrame(step);
-    else el.textContent=to;
   }
   requestAnimationFrame(step);
 }
 
 function closeCredit(){
   const el=document.getElementById('credit');
+  crTimers.forEach(clearTimeout); crTimers=[]; crBusy=false;
+  document.getElementById('cr-dim').classList.remove('show');
+  el.classList.remove('settled');
   el.classList.add('closing');
-  setTimeout(()=>{
-    el.classList.remove('active','closing');
-    document.body.classList.remove('nonav','gray');
-    document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id==='menu'));
-    document.querySelectorAll('.nav-item[data-p]').forEach(b=>b.classList.toggle('active',b.dataset.p==='menu'));
-    document.body.classList.add('on-home');
-  }, 380);
+  // 아래 화면(메뉴)을 미리 깔아둔다
+  document.querySelectorAll('.screen').forEach(s=>{ if(s!==el) s.classList.toggle('active',s.id==='menu'); });
+  document.querySelectorAll('.nav-item[data-p]').forEach(b=>b.classList.toggle('active',b.dataset.p==='menu'));
+  document.body.classList.remove('nonav','gray');
+  document.body.classList.add('on-home');
+  setTimeout(()=>{ el.classList.remove('active','closing'); }, 390);
 }
 
 // go 래핑은 한 번만
